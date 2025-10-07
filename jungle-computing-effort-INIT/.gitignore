@@ -1,0 +1,25 @@
+# Local development files
+*.log
+*.tmp
+*.swp
+*~
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Temporary download files
+/tmp/github-desktop.deb
+/tmp/quarto.deb
+/tmp/quarto.tar.gz
+/tmp/dbeaver.deb
+/tmp/dbeaver.rpm
+/tmp/google-chrome.deb
+
+# IDE and editor directories
+.vscode/
+.idea/
