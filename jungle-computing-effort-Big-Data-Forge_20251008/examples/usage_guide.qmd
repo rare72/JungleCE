@@ -9,20 +9,21 @@ This guide provides usage instructions and examples for various tools integrated
 
 Apache Hadoop is an open-source framework for distributed storage and processing of large datasets on clusters of commodity hardware. It consists of the Hadoop Distributed File System (HDFS) for storage, and Yet Another Resource Negotiator (YARN) for job scheduling and cluster resource management. Hadoop's fault-tolerant and scalable architecture makes it the foundation of the modern big data ecosystem.
 
+The following diagram illustrates the high-level architecture of a Hadoop cluster, showing the relationship between master and worker nodes.
 ```{mermaid}
 graph TD
     subgraph "Master Nodes"
-        NameNode["NameNode (Metadata)"]
-        ResourceManager["ResourceManager (Job Scheduler)"]
+        NameNode["NameNode - Metadata"]
+        ResourceManager["ResourceManager - Job Scheduler"]
     end
     subgraph "Worker Nodes"
         direction LR
-        DataNode1["DataNode (Block Storage)"]
-        NodeManager1["NodeManager (Task Runner)"]
-        DataNode2["DataNode (Block Storage)"]
-        NodeManager2["NodeManager (Task Runner)"]
-        DataNode3["DataNode (Block Storage)"]
-        NodeManager3["NodeManager (Task Runner)"]
+        DataNode1["DataNode - Block Storage"]
+        NodeManager1["NodeManager - Task Runner"]
+        DataNode2["DataNode - Block Storage"]
+        NodeManager2["NodeManager - Task Runner"]
+        DataNode3["DataNode - Block Storage"]
+        NodeManager3["NodeManager - Task Runner"]
     end
     NameNode -- Manages --> DataNode1
     NameNode -- Manages --> DataNode2
@@ -32,6 +33,7 @@ graph TD
     ResourceManager -- Manages --> NodeManager3
 ```
 
+This diagram shows how HDFS splits a large file into blocks and replicates them across multiple DataNodes for fault tolerance.
 ```{mermaid}
 graph LR
     A[Large File] --> B{Client splits into Blocks};
@@ -70,26 +72,23 @@ graph LR
 
 Apache Spark is a unified analytics engine for large-scale data processing, with built-in modules for SQL, streaming, machine learning, and graph processing. It is known for its speed, which is achieved by performing computations in-memory, and its ease of use through rich APIs in Scala, Java, Python, and R. Spark integrates seamlessly with Hadoop, using YARN for resource management and HDFS for storage.
 
+This diagram shows the core components of the Spark ecosystem, where user applications interface with the Spark Core Engine.
 ```{mermaid}
 graph TD
-    subgraph "User Applications"
-        A[Spark SQL]
-        B[DataFrame API]
-        C[Streaming]
-        D[MLlib]
-    end
-    subgraph "Spark Core Engine"
-        E[Driver Program] --> F{SparkContext};
-        F -- Manages --> G[Cluster Manager YARN];
-        G -- Acquires --> H[Executors on Worker Nodes];
-    end
-    A & B & C & D --> E
-    H -- Reads/Writes Data --> I[HDFS];
+    A[Spark SQL API] --> E[Driver Program]
+    B[DataFrame API] --> E
+    C[Streaming API] --> E
+    D[MLlib API] --> E
+    E --> F{SparkContext}
+    F -- Manages --> G[Cluster Manager - YARN]
+    G -- Acquires --> H[Executors on Worker Nodes]
+    H -- "Reads/Writes Data" --> I[HDFS];
 ```
 
+This diagram illustrates the execution flow of a Spark job, from the driver's logical plan to tasks running on executors.
 ```{mermaid}
 graph LR
-    A[Driver] -- "Creates logical plan (DAG)" --> B(DAG Scheduler);
+    A[Driver] -- "Creates logical plan DAG" --> B(DAG Scheduler);
     B -- "Splits into stages/tasks" --> C(Task Scheduler);
     C -- "Launches tasks on executors" --> D{Executor 1};
     C -- "Launches tasks on executors" --> E{Executor 2};
@@ -131,11 +130,12 @@ graph LR
 
 Apache Druid is a real-time analytics database designed for fast slice-and-dice queries on large, streaming datasets. It uses a columnar, time-series oriented architecture to power interactive applications and dashboards where low-latency query performance is critical. Druid decouples its storage from its compute, using a "deep storage" layer like HDFS for permanent data archival.
 
+This diagram illustrates the data flow in Druid, from ingestion of streaming and batch data to its storage in segments on deep storage.
 ```{mermaid}
 flowchart TD
-    A[Streaming Data (Kafka)<br/>Batch Data (HDFS)] --> B{Druid Ingestion<br/>(Indexer)};
-    B --> C[Druid Segments<br/>(Time-chunked, columnar)];
-    C -- Published to --> D[(Deep Storage - HDFS)];
+    A["Streaming Data - Kafka<br/>Batch Data - HDFS"] --> B{Druid Ingestion - Indexer};
+    B --> C["Druid Segments<br/>Time-chunked, columnar"];
+    C -- Published to --> D["Deep Storage - HDFS"];
     D -- Loaded by --> E[Historical Nodes];
     F[Real-time Nodes] -- Ingests --> A;
     G[SQL / API Query] --> H{Broker Node};
@@ -143,6 +143,7 @@ flowchart TD
     H -- Queries --> F;
 ```
 
+This shows the query path, where a Broker scatters requests to Historical and real-time nodes and gathers the results.
 ```{mermaid}
 graph LR
     subgraph Query Path
@@ -154,8 +155,8 @@ graph LR
     end
     subgraph External Dependencies
         direction TB
-        Historicals -- Loads Segments from --> DeepStorage[(HDFS)]
-        Broker & Historicals & MiddleManagers -- Use for Metadata --> ZK[(ZooKeeper)]
+        Historicals -- Loads Segments from --> DeepStorage["HDFS"];
+        Broker & Historicals & MiddleManagers -- Use for Metadata --> ZK["ZooKeeper"];
     end
 ```
 
@@ -199,6 +200,7 @@ graph LR
 
 Apache Beam provides a unified, open-source programming model for defining both batch and streaming data processing pipelines. You write your pipeline once using one of the Beam SDKs (like Java or Python) and then choose a distributed processing back-end, or "Runner," to execute it. This allows for portable pipelines that can run on various engines like Spark, Flink, or Google Cloud Dataflow without rewriting the core logic.
 
+This diagram illustrates the portability of the Beam model, allowing a single pipeline to be executed by different runners.
 ```{mermaid}
 flowchart LR
     A[Your Python/Java Code] -- Beam SDK --> B{Portable Pipeline};
@@ -211,13 +213,14 @@ flowchart LR
     D -- Runs on --> G{{YARN Cluster}};
 ```
 
+This shows the basic structure of a Beam pipeline, consisting of PCollections as datasets and PTransforms as operations.
 ```{mermaid}
 graph TD
     A[PCollection] -- "Represents a dataset" --> B(Pipeline);
     subgraph "Inside a Beam Pipeline"
-        B -- "Apply Transform" --> C["PTransform (e.g., Map)"];
+        B -- "Apply Transform" --> C["PTransform - e.g., Map"];
         C --> D[PCollection];
-        D -- "Apply Transform" --> E["PTransform (e.g., GroupBy)"];
+        D -- "Apply Transform" --> E["PTransform - e.g., GroupBy"];
         E --> F[PCollection];
     end
 ```
@@ -258,10 +261,11 @@ graph TD
 
 Apache BookKeeper is a scalable, fault-tolerant, and low-latency storage service optimized for real-time workloads. It is often used as a replicated log store, providing a durable foundation for messaging systems like Apache Pulsar or for storing state in streaming applications. BookKeeper achieves high throughput by separating the journal (for fast writes) from the ledger storage (for long-term persistence).
 
+This diagram illustrates the write path in BookKeeper, where a client writes an entry to a quorum of Bookies in parallel.
 ```{mermaid}
 graph TD
     subgraph "Client Application"
-        Client --> WriteRequest["Write(data)"];
+        Client --> WriteRequest["Write data"];
     end
     subgraph "BookKeeper Cluster"
         WriteRequest --> B1[Bookie 1];
@@ -272,15 +276,16 @@ graph TD
         B3 -- "Ack" --> Client;
     end
     subgraph "Coordination"
-        Client -- "Reads/writes metadata" --> ZK[(ZooKeeper)];
+        Client -- "Reads/writes metadata" --> ZK["ZooKeeper"];
         B1 & B2 & B3 -- "Register/discover" --> ZK;
     end
 ```
 
+This shows the internal storage layers of a Bookie, with fast writes going to a journal and periodic flushes to ledger storage.
 ```{mermaid}
 graph LR
-    A[Client Write] --> B{Journal (on SSD)};
-    B -- "Flushed periodically" --> C{Ledger Storage (on HDD)};
+    A[Client Write] --> B{Journal on SSD};
+    B -- "Flushed periodically" --> C{Ledger Storage on HDD};
     D[Client Read] --> E{Read Cache};
     E -- "Cache Miss" --> C;
 ```
@@ -319,6 +324,7 @@ graph LR
 
 Apache CarbonData is a columnar storage format designed for fast analytics on big data platforms like Apache Spark. It integrates several advanced features, including indexing, compression, and a columnar layout, to accelerate query performance significantly. CarbonData is not a standalone service but a library that plugs into a query engine, providing an efficient way to store and query large datasets.
 
+This illustrates how the Spark engine interacts with CarbonData files, using indexes to prune data blocks (blocklets).
 ```{mermaid}
 graph TD
     A[Spark SQL Query] --> B{Spark Engine};
@@ -331,13 +337,14 @@ graph TD
     F -- "Prunes blocklets" --> B;
 ```
 
+This diagram shows the process of writing a Spark DataFrame into the CarbonData format, creating fact and index files.
 ```{mermaid}
 graph LR
     A[Raw Data] --> B{Spark DataFrame};
-    B -- "df.write.format(\"carbondata\")" --> C[CarbonData Files on HDFS];
+    B -- "df.write.format('carbondata')" --> C[CarbonData Files on HDFS];
     subgraph "File Structure"
-        C --> D[Fact File (.carbon)];
-        C --> E[Index File (.carbonindex)];
+        C --> D["Fact File .carbon"];
+        C --> E["Index File .carbonindex"];
     end
 ```
 
@@ -375,10 +382,11 @@ graph LR
 
 Apache Calcite is a dynamic data management framework that provides powerful SQL parsing, validation, and optimization capabilities. It is not a database itself but a library that other systems can use to add standard SQL support and advanced query optimization. Calcite allows developers to build databases and data processing engines without having to implement a complex query planner from scratch.
 
+This diagram shows the query processing flow within Calcite, from SQL parsing to a final, optimized executable plan.
 ```{mermaid}
 graph TD
     A[SQL Query] --> B{Calcite SQL Parser};
-    B --> C[Abstract Syntax Tree (AST)];
+    B --> C[Abstract Syntax Tree - AST];
     C --> D{AST Validator};
     D --> E[Relational Algebra Expression];
     E --> F{Query Optimizer};
@@ -386,6 +394,7 @@ graph TD
     G --> H[Executable Plan];
 ```
 
+This illustrates how Calcite can be embedded in a custom application to provide SQL capabilities.
 ```{mermaid}
 graph LR
     subgraph "Your Application"
@@ -441,13 +450,15 @@ graph LR
 
 Apache Daffodil is an open-source implementation of the Data Format Description Language (DFDL), which is used to parse complex data formats into an information set. It is particularly useful for parsing fixed-format textual and binary data, such as legacy scientific formats, EDI, or financial data feeds. Daffodil can be used as a command-line tool or as a library within a larger application.
 
+This diagram shows the core parsing process in Daffodil, where a DFDL schema is used to convert raw data into a structured infoset.
 ```{mermaid}
 graph TD
-    A[Raw Data (Binary/Text)] --> B{Daffodil Parser};
-    C[DFDL Schema (.dfdl.xsd)] -- "Defines the data structure" --> B;
-    B -- "Produces" --> D[Infoset (XML/JSON)];
+    A["Raw Data - Binary/Text"] --> B{Daffodil Parser};
+    C["DFDL Schema .dfdl.xsd"] -- "Defines the data structure" --> B;
+    B -- "Produces" --> D["Infoset - XML/JSON"];
 ```
 
+This illustrates some of the key properties that can be defined for data elements within a DFDL schema.
 ```{mermaid}
 graph LR
     A[DFDL Schema] -- "Defines" --> B(Data Elements);
@@ -495,13 +506,15 @@ graph LR
 
 Apache DataFu is a collection of libraries for working with large-scale data in Apache Hadoop and Spark. It provides a rich set of well-tested User-Defined Functions (UDFs) for common data mining and statistical tasks. DataFu helps reduce boilerplate code and provides efficient implementations for tasks like sessionization, set operations, and sampling.
 
+This diagram illustrates a common use case for a DataFu UDF, such as sessionizing raw log data within a Spark job.
 ```{mermaid}
 graph TD
     A[Raw Log Data] --> B{Spark DataFrame};
-    B -- "Apply DataFu UDF" --> C["sessionize()"];
+    B -- "Apply DataFu UDF" --> C["sessionize UDF"];
     C --> D[DataFrame with Session IDs];
 ```
 
+This shows how the DataFu libraries provide UDFs for different compute engines like Spark and Pig.
 ```{mermaid}
 graph LR
     subgraph "DataFu Libraries"
@@ -510,7 +523,7 @@ graph LR
     end
     subgraph "Compute Engines"
         C[Apache Spark]
-        D[Apache Pig (MapReduce)]
+        D[Apache Pig / MapReduce]
     end
     A -- "Provides UDFs for" --> C;
     B -- "Provides UDFs for" --> D;
@@ -549,6 +562,7 @@ graph LR
 
 Apache DataFusion is an extensible query execution framework, written in Rust, that uses Apache Arrow as its in-memory format. It provides a high-performance, resource-efficient engine for running SQL queries against data in various formats like CSV and Parquet. DataFusion is designed to be embedded as a library within other applications to provide them with powerful analytical capabilities.
 
+This diagram illustrates the internal architecture of the DataFusion query engine, which uses Apache Arrow as its in-memory format.
 ```{mermaid}
 graph TD
     subgraph "DataFusion Engine"
@@ -565,10 +579,11 @@ graph TD
     E -- "Reads from" --> F & G & H;
 ```
 
+This shows how DataFusion is typically used from Python, with the Python library acting as a wrapper around the core Rust engine.
 ```{mermaid}
 graph LR
     A[Python Application] -- "Uses" --> B[DataFusion Python Bindings];
-    B -- "Talks to" --> C[Core DataFusion Engine (Rust)];
+    B -- "Talks to" --> C[Core DataFusion Engine in Rust];
     C -- "Reads/Writes" --> D[Apache Arrow Memory Format];
 ```
 
@@ -601,19 +616,21 @@ graph LR
 
 Apache DataSketches is an open-source library of stochastic streaming algorithms, often called "sketches." These algorithms are used to approximate properties of massive datasets with high accuracy while using a fraction of the memory required by exact computations. DataSketches is ideal for large-scale monitoring systems, real-time analytics, and any application where approximate distinct counts, quantiles, or frequencies are acceptable.
 
+This diagram illustrates the core concept of a sketch, where a massive data stream is processed into a compact, fixed-size data structure.
 ```{mermaid}
 graph TD
     A[Massive Data Stream] --> B{DataSketches Algorithm};
     subgraph "Inside the Sketch"
         B -- "Updates internal state" --> C[Compact, Fixed-Size Memory Representation];
     end
-    C -- "Can be queried for" --> D[Approximate Result (e.g., distinct count)];
+    C -- "Can be queried for" --> D["Approximate Result e.g., distinct count"];
 ```
 
+This shows a common use case for sketches in real-time analytics, such as approximating the number of distinct users from a Kafka stream in Spark.
 ```{mermaid}
 graph LR
     subgraph "Use Case: Real-time Analytics"
-        A[Event Stream (Kafka)] --> B{Spark Streaming};
+        A[Event Stream - Kafka] --> B{Spark Streaming};
         B -- "Updates Sketch per batch" --> C[ThetaSketch for Distinct Users];
         C -- "Periodically" --> D{Dashboard Server};
         D -- "Displays ~5.2M unique users" --> E[UI];
@@ -654,6 +671,7 @@ graph LR
 
 Apache TVM is an open-source machine learning compiler framework for CPUs, GPUs, and machine learning accelerators. It aims to close the gap between productivity-focused deep learning frameworks (like PyTorch and TensorFlow) and performance-oriented hardware backends. TVM compiles models from these high-level frameworks into optimized, low-level code for specific hardware targets.
 
+This diagram shows the TVM compiler stack, which takes models from high-level frameworks and compiles them for various hardware targets.
 ```{mermaid}
 graph TD
     subgraph "High-Level Frameworks"
@@ -662,15 +680,15 @@ graph TD
         C[ONNX]
     end
     subgraph "TVM Compiler Stack"
-        D{Relay (High-Level IR)};
-        E{Tensor Expression (Low-Level IR)};
-        F{AutoTVM / AutoScheduler (Optimizers)};
+        D{Relay High-Level IR};
+        E{Tensor Expression Low-Level IR};
+        F{AutoTVM / AutoScheduler Optimizers};
         G[Code Generator];
     end
     subgraph "Hardware Targets"
-        H[CPU (x86, ARM)]
-        I[GPU (NVIDIA, AMD)]
-        J[Accelerators (FPGA, etc.)]
+        H["CPU x86, ARM"]
+        I["GPU NVIDIA, AMD"]
+        J["Accelerators FPGA, etc."]
     end
     A & B & C --> D;
     D --> E;
@@ -679,12 +697,13 @@ graph TD
     G --> H & I & J;
 ```
 
+This illustrates the typical workflow in TVM, from importing a model to tuning and compiling it for a specific device.
 ```{mermaid}
 graph LR
     A[PyTorch Model] -- "Import" --> B(TVM Relay Graph);
-    B -- "Tune (AutoTVM)" --> C(Finds best schedule for target hardware);
+    B -- "Tune AutoTVM" --> C(Finds best schedule for target hardware);
     C -- "Compile" --> D[Optimized, Deployable Module];
-    D -- "Run on" --> E{Target Device (e.g., GPU)};
+    D -- "Run on" --> E{"Target Device e.g., GPU"};
 ```
 
 ### Examples (Python)
@@ -730,6 +749,7 @@ graph LR
 
 Apache Fluo is a distributed processing system that lets users make incremental updates to large data sets stored in Apache Accumulo. It is designed to expose the results of a large-scale computation as it is being updated, providing low-latency access to the latest results. This makes it ideal for use cases like updating search indexes, recalculating graph metrics, or maintaining materialized views where seeing fresh results quickly is critical. The core components are Observers, which are triggered by changes to data, and Transactions, which ensure data is updated atomically.
 
+This diagram illustrates the architecture of a Fluo application, showing how external clients interact with data and trigger observers.
 ```{mermaid}
 graph TD
     subgraph "External Systems"
@@ -745,12 +765,13 @@ graph TD
     end
 
     subgraph "Storage Layer"
-        C -- "Stores data and notifications" --> H[(Apache Accumulo)];
+        C -- "Stores data and notifications" --> H["Apache Accumulo"];
     end
 
     E -- "Reads latest results" --> C;
 ```
 
+This shows the lifecycle of a Fluo transaction, including the check for write collisions.
 ```{mermaid}
 graph LR
     A[Transaction Start] --> B(Read row R, column C);
@@ -819,6 +840,7 @@ graph LR
 
 Apache Airflow is a platform to programmatically author, schedule, and monitor workflows. It represents workflows as Directed Acyclic Graphs (DAGs) of tasks, which are defined in Python scripts. This "workflows as code" approach makes them maintainable, versionable, testable, and collaborative, making Airflow a standard for complex data engineering pipelines.
 
+This diagram shows the core components of Apache Airflow and how they interact with the metadata database and user-defined DAG files.
 ```{mermaid}
 graph TD
     subgraph "Airflow Core Components"
@@ -834,6 +856,7 @@ graph TD
     B -- "Parses" --> F;
 ```
 
+This illustrates a sample Directed Acyclic Graph, showing task dependencies for a typical ETL workflow.
 ```{mermaid}
 graph TD
     A(Start) --> B[Extract from API];
@@ -907,29 +930,31 @@ graph TD
 
 Apache Knox is an application gateway that provides a single point of secure access for REST APIs and UIs of Apache Hadoop services. It acts as a reverse proxy, hiding cluster details and simplifying client access by exposing a single endpoint for all services. Knox centralizes security by integrating with enterprise identity systems like LDAP and enforcing policies for authentication, authorization, and auditing.
 
+This diagram illustrates Apache Knox's role as a reverse proxy, providing a single, secure entry point to a Hadoop cluster.
 ```{mermaid}
 graph LR
     subgraph "External World"
         Client -- "HTTPS Request" --> Knox;
     end
     subgraph "DMZ"
-        Knox -- "Authenticates/Authorizes" --> IDM[Enterprise IDM / LDAP];
+        Knox -- "Authenticates/Authorizes" --> IDM["Enterprise IDM / LDAP"];
     end
-    subgraph "Hadoop Cluster (Private Network)"
-        Knox -- "Proxies Request (HTTP)" --> WebHDFS;
-        Knox -- "Proxies Request (HTTP)" --> YARN_RM;
-        Knox -- "Proxies Request (HTTP)" --> HBase_REST;
-        Knox -- "Proxies Request (HTTP)" --> HiveServer2;
+    subgraph "Hadoop Cluster - Private Network"
+        Knox -- "Proxies Request - HTTP" --> WebHDFS;
+        Knox -- "Proxies Request - HTTP" --> YARN_RM;
+        Knox -- "Proxies Request - HTTP" --> HBase_REST;
+        Knox -- "Proxies Request - HTTP" --> HiveServer2;
     end
 ```
 
+This shows the flow of a client request through the Knox Gateway, including authentication, authorization, and dispatch.
 ```{mermaid}
 graph TD
-    A[Client Request<br/>/gateway/default/webhdfs/v1/] --> B{Knox Gateway};
-    B -- "1. Authentication (e.g., LDAP)" --> C(Pass);
-    C -- "2. Authorization (ACLs)" --> D(Pass);
+    A["Client Request<br/>/gateway/default/webhdfs/v1/"] --> B{Knox Gateway};
+    B -- "1. Authentication e.g., LDAP" --> C(Pass);
+    C -- "2. Authorization - ACLs" --> D(Pass);
     D -- "3. Dispatch to Service" --> E[WebHDFS Service Definition];
-    E -- "4. Rewrite URL & Proxy" --> F[Internal HDFS NameNode<br/>:50070/webhdfs/v1/];
+    E -- "4. Rewrite URL & Proxy" --> F["Internal HDFS NameNode<br/>:50070/webhdfs/v1/"];
 ```
 
 ### Examples (Knox Topology Files)
@@ -990,11 +1015,12 @@ graph TD
 
 Apache Storm is a free and open-source distributed real-time computation system. Storm makes it easy to reliably process unbounded streams of data, doing for real-time processing what Hadoop did for batch processing. It is simple, can be used with any programming language, and is known for its high speed, fault-tolerance, and guaranteed message processing. A Storm application, called a "topology," consists of "Spouts" (sources of streams) and "Bolts" (which process streams).
 
+This diagram shows the high-level architecture of a Storm cluster, with the Nimbus master coordinating tasks on Supervisor worker nodes via ZooKeeper.
 ```{mermaid}
 graph TD
     subgraph "Storm Cluster"
-        A[Nimbus (Master)] -- "Distributes code & assigns tasks" --> B[ZooKeeper];
-        C[Supervisors (Workers)] -- "Listen for tasks" --> B;
+        A["Nimbus - Master"] -- "Distributes code & assigns tasks" --> B[ZooKeeper];
+        C["Supervisors - Workers"] -- "Listen for tasks" --> B;
         C -- "Start/Stop" --> D[Worker Processes];
     end
     subgraph "User's Topology"
@@ -1006,6 +1032,7 @@ graph TD
     D -- "Runs" --> G
 ```
 
+This illustrates a simple Storm topology, where a Spout emits data that is processed sequentially by two Bolts.
 ```{mermaid}
 graph LR
     A[Kafka Topic] --> B(Kafka Spout);
@@ -1088,19 +1115,21 @@ graph LR
 
 Apache Phoenix is an open-source, massively parallel, relational database engine that provides a SQL layer on top of Apache HBase. It allows you to interact with HBase data using standard JDBC and SQL, completely abstracting away the underlying NoSQL key-value store. Phoenix compiles SQL queries into native HBase scans, enabling low-latency analytical queries and operational workloads.
 
+This diagram shows how the Phoenix query engine sits on top of an HBase cluster, translating SQL queries into native HBase operations.
 ```{mermaid}
 graph TD
-    A[User / Application] -- "JDBC / ODBC" --> B{Phoenix Query Engine};
+    A["User / Application"] -- "JDBC / ODBC" --> B{Phoenix Query Engine};
     B -- "Standard SQL" --> C(SQL Parser & Optimizer);
     C -- "Compiles to" --> D[HBase Scans, Puts, Deletes];
-    D -- "Executes on" --> E[(Apache HBase Cluster)];
-    E -- "Stores data in HFiles on" --> F[(HDFS)];
+    D -- "Executes on" --> E["Apache HBase Cluster"];
+    E -- "Stores data in HFiles on" --> F["HDFS"];
 ```
 
+This illustrates how a standard SQL table definition in Phoenix is mapped to the underlying key-value structure of an HBase table.
 ```{mermaid}
 graph LR
     subgraph "Phoenix Table View"
-        A["CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR, city VARCHAR)"]
+        A["CREATE TABLE users id INTEGER PRIMARY KEY, name VARCHAR, city VARCHAR"]
     end
     subgraph "Underlying HBase Table View"
         B["Row Key: 1 --> Columns: 0:name='John', 0:city='NYC'"]
@@ -1142,6 +1171,7 @@ graph LR
 
 Apache Ranger provides centralized security administration for the Hadoop ecosystem. It allows you to define and enforce comprehensive, policy-based security for components like HDFS, Hive, HBase, and more. Ranger offers a central UI for managing policies and provides robust auditing capabilities to track all access attempts.
 
+This diagram illustrates the centralized security architecture of Apache Ranger, with plugins in each component enforcing policies from a central admin server.
 ```{mermaid}
 graph TD
     A[Admin] -- "Defines Policies" --> B[Ranger Admin UI];
@@ -1152,16 +1182,17 @@ graph TD
         HBase -- "Syncs Policies" --> C
     end
     subgraph "User Interaction"
-        D[User] -- "Access Request (e.g., hdfs dfs -ls)" --> E{HDFS NameNode};
+        D[User] -- "Access Request e.g., hdfs dfs -ls" --> E{HDFS NameNode};
     end
     E -- "Intercepted by" --> F[Ranger HDFS Plugin];
     F -- "Enforces Policy" --> D;
 ```
 
+This shows the flow of a user request being intercepted and evaluated by a Ranger plugin against the stored policies.
 ```{mermaid}
 graph LR
-    A[Policy: Allow group 'analysts' to SELECT on table 'sales'] --> B{Ranger Policy DB};
-    C[User 'alice' (in 'analysts' group)] -- "SELECT * FROM sales" --> D{HiveServer2};
+    A["Policy: Allow group 'analysts' to SELECT on table 'sales'"] --> B{Ranger Policy DB};
+    C["User 'alice' in 'analysts' group"] -- "SELECT * FROM sales" --> D{HiveServer2};
     D -- "Is access allowed?" --> E[Ranger Hive Plugin];
     E -- "Checks policy from" --> B;
     E -- "Returns 'ALLOW'" --> D;
@@ -1190,14 +1221,15 @@ graph LR
 
 Apache Pinot is a real-time, distributed OLAP datastore designed to deliver scalable, low-latency analytics, even at high throughput. It is ideal for user-facing analytical applications, where users need to slice and dice large amounts of data interactively. Pinot achieves its speed through a columnar store, a variety of indexing techniques, and the ability to ingest data from both streaming sources (like Kafka) and batch sources (like HDFS).
 
+This diagram shows the high-level architecture of an Apache Pinot cluster, including the control plane, data ingestion path, and query path.
 ```{mermaid}
 graph TD
     subgraph "Data Ingestion"
-        A[Streaming (Kafka)] --> B[Pinot Real-time Servers];
-        C[Batch (HDFS)] --> D[Pinot Offline Servers];
+        A["Streaming - Kafka"] --> B[Pinot Real-time Servers];
+        C["Batch - HDFS"] --> D[Pinot Offline Servers];
     end
     subgraph "Query Path"
-        E[User Query (PQL/SQL)] --> F{Pinot Broker};
+        E["User Query - PQL/SQL"] --> F{Pinot Broker};
         F -- "Scatter" --> B;
         F -- "Scatter" --> D;
         B --> G[Results];
@@ -1205,14 +1237,15 @@ graph TD
         G -- "Gather" --> F;
     end
     subgraph "Control Plane"
-       H{Pinot Controller} -- "Manages Cluster" --> I[(ZooKeeper)];
+       H{Pinot Controller} -- "Manages Cluster" --> I["ZooKeeper"];
        H -- "Manages" --> B & D & F;
     end
 ```
 
+This illustrates how a Pinot Broker scatters a query to multiple servers and uses indexes to quickly find and aggregate results.
 ```{mermaid}
 graph LR
-    A[Query: SELECT COUNT(*) FROM table WHERE country='US'] --> B{Broker};
+    A["Query: SELECT COUNT(*) FROM table WHERE country='US'"] --> B{Broker};
     B -- "Forwards to all Servers with table segments" --> C[Server 1];
     B -- "Forwards to all Servers with table segments" --> D[Server 2];
     subgraph "Inside Server 1"
@@ -1278,13 +1311,14 @@ graph LR
     ```sql
     SELECT COUNT(*)
     FROM metrics
-    WHERE ts > now() - 86400000 -- (24 * 60 * 60 * 1000)
+    WHERE ts > now() - 86400000 -- 24 * 60 * 60 * 1000
     ```
 
 ## Apache Linkis
 
 Apache Linkis is a computation middleware project that sits between upstream applications and downstream computation and storage engines. It provides a standardized set of REST/WebSocket APIs for submitting, managing, and monitoring jobs on various engines like Spark, Hive, and Flink. Linkis aims to decouple applications from the underlying engines, providing features like multi-tenant resource management, unified configuration, and job lifecycle control.
 
+This diagram shows how Linkis acts as a middleware layer, accepting requests from upstream applications and managing their execution on various downstream engines.
 ```{mermaid}
 graph TD
     subgraph "Upstream Tools / Applications"
@@ -1307,10 +1341,11 @@ graph TD
     end
 ```
 
+This illustrates the flow of a user submitting a job through the Linkis API, which then orchestrates the job's execution on a YARN cluster.
 ```{mermaid}
 graph LR
     User --> App(Web App);
-    App -- "1. Submit Code (Spark SQL)" --> Linkis;
+    App -- "1. Submit Code - Spark SQL" --> Linkis;
     Linkis -- "2. Launch Spark Engine via YARN" --> YARN;
     YARN -- "3. Starts Spark" --> Spark(Spark Engine);
     Linkis -- "4. Sends code to Spark" --> Spark;
@@ -1352,6 +1387,7 @@ graph LR
 
 Apache Kibble is a suite of tools for collecting, aggregating, and visualizing activity in software projects and communities. It scans various sources like source code repositories (Git), mailing lists, and issue trackers to build a comprehensive picture of project health and contributor activity. Kibble is primarily a data platform and visualization tool used by open-source foundations and communities to understand their projects better.
 
+This diagram illustrates the architecture of the Apache Kibble platform, showing how the scanner collects data from various sources and stores it in Elasticsearch for visualization.
 ```{mermaid}
 graph TD
     subgraph Data Sources
@@ -1362,7 +1398,7 @@ graph TD
     end
     subgraph Kibble Platform
         E{Kibble Scanner};
-        F[Elasticsearch (Storage)];
+        F["Elasticsearch - Storage"];
         G[Kibble Web UI];
     end
     A & B & C & D --> E;
@@ -1370,6 +1406,7 @@ graph TD
     G -- "Queries and Visualizes" --> F;
 ```
 
+This shows the logical flow of a Kibble scan, from fetching raw data to analyzing it and storing the resulting statistics.
 ```{mermaid}
 graph LR
     subgraph "Scan Phase"
@@ -1432,11 +1469,12 @@ graph LR
 
 Apache Arrow provides a standardized, language-independent columnar memory format for flat and hierarchical data, organized for efficient analytic operations on modern hardware. It is designed to accelerate in-memory data processing and interchange between systems without the overhead of serialization and deserialization. By providing a common data representation, Arrow enables high-performance data transport and analytics across a wide range of tools and languages.
 
+This diagram contrasts traditional data interchange with Arrow's zero-copy read capability.
 ```{mermaid}
 graph TD
     subgraph "Traditional Data Interchange"
-        A[System 1 (e.g., Spark)] -- Serialize --> B(Data on Disk/Network);
-        B -- Deserialize --> C[System 2 (e.g., Pandas)];
+        A["System 1 - e.g., Spark"] -- Serialize --> B(Data on Disk/Network);
+        B -- Deserialize --> C["System 2 - e.g., Pandas"];
     end
     subgraph "Arrow-based Interchange"
         D[System 1] -- "Writes to Arrow format" --> E(Shared Arrow Buffer);
@@ -1444,6 +1482,7 @@ graph TD
     end
 ```
 
+This illustrates the basic components of an Arrow column in memory.
 ```{mermaid}
 graph LR
     subgraph "Arrow Memory Layout"
@@ -1495,32 +1534,34 @@ graph LR
 
 Apache Helix is a generic cluster management framework used for the automatic management of partitioned, replicated, and distributed resources. It simplifies the process of building distributed systems by providing common functionalities like fault tolerance, automated rebalancing, and state management. Helix uses ZooKeeper to maintain the state of the cluster, including which nodes are live and how resources are partitioned among them.
 
+This diagram shows the core state management model of Helix, where a Controller works to match the Current State of the cluster to the Ideal State defined by an operator.
 ```{mermaid}
 graph TD
-    A[Cluster Operator] -- "Defines Ideal State" --> B[(ZooKeeper)];
+    A[Cluster Operator] -- "Defines Ideal State" --> B["ZooKeeper"];
     C[Controller] -- "Observes" --> B;
-    C -- "Calculates and sends state transitions" --> D[Participants (Nodes)];
+    C -- "Calculates and sends state transitions" --> D[Participants / Nodes];
     D -- "Updates Current State" --> B;
 ```
 
+This illustrates how Helix automatically partitions and replicates a resource across multiple nodes in a cluster.
 ```{mermaid}
 graph LR
-    subgraph "Resource: myDatabase (3 partitions, 2 replicas)"
+    subgraph "Resource: myDatabase - 3 partitions, 2 replicas"
         P1[Partition 1]
         P2[Partition 2]
         P3[Partition 3]
     end
     subgraph "Node A"
-        P1_Master("P1 (Master)")
-        P2_Slave("P2 (Slave)")
+        P1_Master("P1 - Master")
+        P2_Slave("P2 - Slave")
     end
     subgraph "Node B"
-        P2_Master("P2 (Master)")
-        P3_Slave("P3 (Slave)")
+        P2_Master("P2 - Master")
+        P3_Slave("P3 - Slave")
     end
     subgraph "Node C"
-        P3_Master("P3 (Master)")
-        P1_Slave("P1 (Slave)")
+        P3_Master("P3 - Master")
+        P1_Slave("P1 - Slave")
     end
 ```
 
@@ -1551,6 +1592,7 @@ graph LR
 
 Apache Hop is a visual data integration platform designed to be easy to use, extensible, and capable of handling a wide variety of data engineering tasks. It allows users to build complex data pipelines using a graphical interface, reducing the need for custom coding. Hop can run these pipelines on its own engine or orchestrate their execution on distributed compute engines like Apache Spark.
 
+This diagram shows the separation between designing a pipeline in the Hop GUI and executing it on various target engines.
 ```{mermaid}
 graph TD
     subgraph "Hop Design Environment"
@@ -1563,6 +1605,7 @@ graph TD
     end
 ```
 
+This illustrates a simple visual pipeline in Hop, reading from a CSV and writing to a database.
 ```{mermaid}
 graph LR
     A[CSV Input] --> B{Select Values};
@@ -1595,6 +1638,7 @@ graph LR
 
 Apache Iceberg is an open table format for huge analytic datasets, designed to improve on the reliability and performance of traditional Hive tables. It provides features like ACID transactions, schema evolution, and hidden partitioning, all while allowing multiple compute engines to work on the same data concurrently. Iceberg is not a service but a library that manages table metadata.
 
+This diagram shows the architecture of an Iceberg table, with metadata pointers tracking manifest lists, manifest files, and data files.
 ```{mermaid}
 graph TD
     subgraph "Compute Engines"
@@ -1606,7 +1650,7 @@ graph TD
         D{Metadata Pointer};
         E[Manifest List];
         F[Manifest File];
-        G[Data File (Parquet/ORC)];
+        G["Data File - Parquet/ORC"];
     end
     A & B & C -- "Read/Write via" --> D;
     D -- "Points to" --> E;
@@ -1614,6 +1658,7 @@ graph TD
     F -- "Tracks" --> G;
 ```
 
+This illustrates how Iceberg's versioned metadata pointers enable time-travel queries.
 ```{mermaid}
 graph LR
     A[v1 metadata.json] -- "Transaction 1: Add data" --> B[v2 metadata.json];
@@ -1659,23 +1704,25 @@ graph LR
 
 Apache InLong is a one-stop, full-lifecycle data integration and synchronization platform for massive data. It provides automatic, safe, and reliable data transmission capabilities, supporting both batch and streaming data. InLong simplifies the process of building data pipelines by integrating components for collection, aggregation, caching, and sinking data to various storage systems.
 
+This diagram shows the high-level architecture of the Apache InLong platform, from data collection to sinking.
 ```{mermaid}
 graph TD
     A[Data Sources] --> B{InLong Agent/SDK};
-    B --> C[DataProxy (Cache)];
-    C --> D[TubeMQ (Message Queue)];
+    B --> C["DataProxy - Cache"];
+    C --> D["TubeMQ - Message Queue"];
     D --> E{InLong Sort};
-    E -- "Writes to" --> F[Data Sinks (HDFS, Hive, etc.)];
+    E -- "Writes to" --> F["Data Sinks - HDFS, Hive, etc."];
     G[InLong Manager] -- "Manages all components" --> B & C & D & E;
 ```
 
+This illustrates a typical data flow through InLong, from an agent collecting logs to the data being written to HDFS.
 ```{mermaid}
 graph LR
     subgraph "Data Flow"
         A[Log File] -- "Agent collects" --> B(DataProxy);
         B -- "Forwards to" --> C(TubeMQ);
         C -- "Consumed by" --> D(Sort);
-        D -- "Writes to" --> E[(HDFS)];
+        D -- "Writes to" --> E["HDFS"];
     end
 ```
 
@@ -1704,9 +1751,10 @@ graph LR
 
 Apache Kudu is a columnar storage engine for structured data that supports both fast analytics and low-latency random access. It is designed to enable hybrid transactional/analytical processing (HTAP) by combining the advantages of columnar formats with the ability to perform rapid updates and inserts. Kudu integrates with the Hadoop ecosystem, particularly with Apache Impala and Spark, to provide a powerful engine for real-time analytics.
 
+This diagram shows the architecture of a Kudu cluster, with a Master managing metadata for multiple Tablet Servers.
 ```{mermaid}
 graph TD
-    A[Kudu Master] -- "Manages metadata" --> B[(Catalog Table)];
+    A[Kudu Master] -- "Manages metadata" --> B["Catalog Table"];
     A -- "Manages" --> C[Tablet Servers];
     subgraph "Tablet Server"
         D[Tablet 1]
@@ -1715,12 +1763,13 @@ graph TD
     C --> D & E;
 ```
 
+This illustrates Kudu's write path, where new writes go to an in-memory store before being flushed to columnar storage on disk.
 ```{mermaid}
 graph LR
     A[Data] -- "Written via" --> B{Kudu Client};
     B -- "Writes to" --> C[Tablet Server];
     subgraph "Inside Tablet Server"
-        C --> D{In-memory RowSet (Deltas)};
+        C --> D{In-memory RowSet - Deltas};
         D -- "Flushed to" --> E[On-disk Columnar RowSet];
     end
 ```
@@ -1762,20 +1811,22 @@ graph LR
 
 Apache Kylin is an open-source, distributed Analytical Data Warehouse for Big Data that provides an OLAP (Online Analytical Processing) engine. It pre-calculates and stores multidimensional data "cubes" on HDFS, allowing for near-constant query time regardless of the size of the underlying dataset. Kylin is designed to provide sub-second query latency for SQL queries against petabyte-scale data by avoiding on-the-fly computation.
 
+This diagram shows the high-level architecture of Apache Kylin, where it builds pre-aggregated data cubes from Hive tables.
 ```{mermaid}
 graph TD
     A[Hive Tables] -- "Data Source" --> B{Kylin Cube};
     B -- "Builds on" --> C[Hadoop/Spark];
-    B -- "Stores Cube in" --> D[(HDFS)];
+    B -- "Stores Cube in" --> D["HDFS"];
     E[BI Tool / SQL Client] -- "SQL Query" --> F{Kylin Query Engine};
     F -- "Reads pre-aggregated data from" --> D;
 ```
 
+This illustrates the separation between the cube build phase and the query phase, which allows for fast query responses.
 ```{mermaid}
 graph LR
     subgraph "Build Phase"
         A[Hive Fact & Dimension Tables] --> B{Kylin builds Cuboids};
-        B -- "Each Cuboid is a pre-aggregated view" --> C[(HBase/HDFS)];
+        B -- "Each Cuboid is a pre-aggregated view" --> C["HBase/HDFS"];
     end
     subgraph "Query Phase"
         D[SQL Query] --> E{Kylin identifies smallest Cuboid};
@@ -1807,6 +1858,7 @@ graph LR
 
 Apache ORC (Optimized Row Columnar) is a free and open-source columnar storage format for data in the Hadoop ecosystem. It is designed for high-performance reading, writing, and processing of large datasets by using techniques like compression, predicate pushdown, and lightweight indexing. Because it is a library and not a service, its "deployment" means it is included and used by data processing engines like Spark and Hive.
 
+This diagram shows the internal structure of an ORC file, which consists of a footer and multiple stripes of data.
 ```{mermaid}
 graph TD
     A[Table Data] --> B{ORC Writer};
@@ -1815,13 +1867,14 @@ graph TD
         C --> D[Stripe 1];
         C --> E[Stripe 2];
         D --> F[Index Data];
-        D --> G[Row Data (Columnar)];
+        D --> G[Row Data - Columnar];
     end
 ```
 
+This illustrates how the ORC reader uses file and stripe statistics to skip reading irrelevant data.
 ```{mermaid}
 graph LR
-    A[SQL Query: SELECT col1 FROM table WHERE col2 = 'X'] --> B{ORC Reader};
+    A["SQL Query: SELECT col1 FROM table WHERE col2 = 'X'"] --> B{ORC Reader};
     B -- "1. Read File Footer" --> C(Get file-level stats);
     B -- "2. Read Stripe Footers" --> D(Get stripe-level stats);
     D -- "3. Skip stripes where col2 cannot be 'X'" --> E[Read only relevant stripes];
@@ -1858,24 +1911,26 @@ graph LR
 
 Apache Ozone is a scalable, redundant, and distributed object store for Hadoop. It is designed to handle both small and large files efficiently, overcoming some of the limitations of HDFS, particularly for environments with billions of small objects. Ozone provides an S3-compatible interface, making it a modern alternative for data storage in the Hadoop ecosystem.
 
+This diagram shows the architecture of an Apache Ozone cluster, with the Ozone Manager and Storage Container Manager managing the DataNodes.
 ```{mermaid}
 graph TD
-    A[Client] -- "S3/RPC Request" --> B{Ozone Manager (OM)};
-    B -- "Manages metadata namespace" --> C{Storage Container Manager (SCM)};
+    A[Client] -- "S3/RPC Request" --> B{Ozone Manager - OM};
+    B -- "Manages metadata namespace" --> C{Storage Container Manager - SCM};
     C -- "Manages blocks & replication" --> D[DataNodes];
     Client -- "Reads/Writes data blocks" --> D;
 ```
 
+This illustrates the logical namespace in Ozone (Volume, Bucket, Key) and how it maps to physical storage.
 ```{mermaid}
 graph LR
     subgraph "Ozone Namespace"
         A[Volume] --> B[Bucket];
-        B --> C[Key (Object)];
+        B --> C["Key - Object"];
     end
     subgraph "Physical Storage"
         C -- "Is broken into" --> D[Blocks];
         D -- "Are stored in" --> E[Containers];
-        E -- "Replicated across" --> F[(DataNodes)];
+        E -- "Replicated across" --> F["DataNodes"];
     end
 ```
 
@@ -1906,21 +1961,23 @@ graph LR
 
 Apache Parquet is a highly efficient, open-source columnar storage format for data in the Hadoop ecosystem. It is designed for performance, using advanced compression and encoding schemes to minimize storage space and accelerate analytical queries. Parquet is a library, not a service, and is the default storage format for many data processing frameworks like Apache Spark.
 
+This diagram shows the internal structure of a Parquet file, which is composed of row groups and columnar chunks.
 ```{mermaid}
 graph TD
     A[Row-based Data] --> B{Parquet Writer};
     subgraph "Parquet File Structure"
-        B --> C[File Footer (Metadata)];
+        B --> C[File Footer - Metadata];
         C --> D[Row Group 1];
         C --> E[Row Group 2];
-        D --> F[Column Chunk (Col A)];
-        D --> G[Column Chunk (Col B)];
+        D --> F[Column Chunk - Col A];
+        D --> G[Column Chunk - Col B];
     end
 ```
 
+This illustrates how the Parquet reader uses metadata to skip row groups and column chunks that are not relevant to a query.
 ```{mermaid}
 graph LR
-    A[Query: SELECT col_B FROM table WHERE col_A = 5] --> B{Parquet Reader};
+    A["Query: SELECT col_B FROM table WHERE col_A = 5"] --> B{Parquet Reader};
     B -- "1. Read Footer for schema & stats" --> C(Read Metadata);
     C -- "2. Use Row Group stats to skip groups" --> D[Read only relevant Row Groups];
     D -- "3. Read only Column Chunk for col_B" --> E[Result];
@@ -1956,18 +2013,20 @@ graph LR
 
 Apache Pulsar is a distributed, open-source pub-sub messaging and streaming platform built for scalability, performance, and reliability. It combines high-throughput messaging with a stream storage layer, provided by Apache BookKeeper, to offer features like guaranteed message delivery and topic retention. Pulsar's multi-tenant architecture and tiered storage make it well-suited for large-scale enterprise use cases.
 
+This diagram shows the architecture of an Apache Pulsar cluster, with Brokers handling messages and Bookies providing durable storage.
 ```{mermaid}
 graph TD
     subgraph "Pulsar Cluster"
         A[Producers] --> B{Brokers};
         C[Consumers] --> B;
-        B -- "Read/Write Ledger Data" --> D[Bookies (BookKeeper)];
+        B -- "Read/Write Ledger Data" --> D["Bookies - BookKeeper"];
     end
     subgraph "Coordination"
-        B & D -- "Use for metadata" --> E[(ZooKeeper)];
+        B & D -- "Use for metadata" --> E["ZooKeeper"];
     end
 ```
 
+This illustrates the durable write path in Pulsar, where a message is written to multiple Bookies before being acknowledged.
 ```{mermaid}
 graph LR
     A[Producer] -- "Sends message" --> B(Broker);
@@ -2008,15 +2067,17 @@ graph LR
 
 Apache Samza is a distributed stream processing framework that uses Apache Kafka for messaging and Apache YARN for resource management and fault tolerance. It allows you to write stateful applications that process data in near real-time, with strong guarantees for durability and ordering. Samza is designed to be simple to operate and scales horizontally by adding more containers on the YARN cluster.
 
+This diagram shows the architecture of a stateful Samza job, which uses Kafka for input/output and RocksDB for local state.
 ```{mermaid}
 graph TD
     A[Input Kafka Topic] --> B{Samza Job};
     B -- "Runs on" --> C[YARN Container];
     B -- "Writes to" --> D[Output Kafka Topic];
-    B -- "Stores state in" --> E[RocksDB (on local disk)];
+    B -- "Stores state in" --> E["RocksDB on local disk"];
     E -- "Backed up to" --> F[Changelog Kafka Topic];
 ```
 
+This illustrates how Samza runs on a YARN cluster, with an ApplicationMaster managing task containers on NodeManagers.
 ```{mermaid}
 graph LR
     A[YARN ApplicationMaster] -- "Requests containers" --> B(YARN ResourceManager);
@@ -2064,13 +2125,15 @@ graph LR
 
 Apache SeaTunnel is a high-performance, distributed data integration tool that simplifies the process of synchronizing data between various sources and sinks. It can run on top of compute engines like Spark and Flink, leveraging their power to perform massive-scale data movement and transformation. SeaTunnel uses a simple, declarative configuration file format, allowing users to build complex data pipelines without writing code.
 
+This diagram shows the basic data flow of a SeaTunnel job, reading from a source and writing to a sink via a compute engine.
 ```{mermaid}
 graph TD
-    A[Source (e.g., JDBC, HDFS)] -- "Data read by" --> B{SeaTunnel Job};
-    B -- "Runs on" --> C[Compute Engine (Spark/Flink)];
-    B -- "Writes to" --> D[Sink (e.g., Kafka, Elasticsearch)];
+    A["Source e.g., JDBC, HDFS"] -- "Data read by" --> B{SeaTunnel Job};
+    B -- "Runs on" --> C["Compute Engine - Spark/Flink"];
+    B -- "Writes to" --> D["Sink e.g., Kafka, Elasticsearch"];
 ```
 
+This illustrates how the SeaTunnel CLI submits a job defined in a configuration file to a Spark or Flink cluster.
 ```{mermaid}
 graph LR
     A[config.hocon] -- "Defines pipeline" --> B{SeaTunnel CLI};
@@ -2135,6 +2198,7 @@ graph LR
 
 Apache Tez is an application framework for building high-performance batch and interactive data processing applications on top of Apache YARN. It generalizes the MapReduce paradigm, providing a more powerful and flexible engine for executing a Directed Acyclic Graph (DAG) of tasks. By avoiding intermediate writes to HDFS, Tez can run complex data processing jobs significantly faster than traditional MapReduce.
 
+This diagram shows how a Tez DAG is executed on a YARN cluster, managed by a Tez Application Master.
 ```{mermaid}
 graph TD
     A[Hive/Pig Query] -- "Compiled into" --> B{Tez DAG};
@@ -2143,15 +2207,16 @@ graph TD
     D -- "Manages tasks across" --> E[YARN Containers];
 ```
 
+This illustrates how Tez can execute a complex job as a single DAG, while MapReduce would require multiple, chained jobs with intermediate writes to HDFS.
 ```{mermaid}
 graph LR
-    subgraph "MapReduce (2 Jobs)"
+    subgraph "MapReduce - 2 Jobs"
         A[Map1] --> B[Reduce1];
-        B -- "Writes to HDFS" --> C[(HDFS)];
+        B -- "Writes to HDFS" --> C["HDFS"];
         C -- "Read by" --> D[Map2];
         D --> E[Reduce2];
     end
-    subgraph "Tez (1 Job)"
+    subgraph "Tez - 1 Job"
         F[Task] --> G[Task] --> H[Task];
     end
 ```
@@ -2199,17 +2264,19 @@ graph LR
 
 Apache Gobblin is a universal data ingestion framework for extracting, transforming, and loading large amounts of data from a variety of sources into big data systems. It is designed to handle the complexities of data ingestion at scale, providing features like fault tolerance, auto-scalability, and state management. Gobblin can run as a standalone service or be distributed on Apache YARN for large-scale deployments.
 
+This diagram shows the core components of a Gobblin ingestion job: an Extractor, a Converter, and a Writer.
 ```{mermaid}
 graph TD
-    A[Source (e.g., Salesforce, Kafka, DB)] --> B{Gobblin Job};
+    A["Source - e.g., Salesforce, Kafka, DB"] --> B{Gobblin Job};
     subgraph "Inside Gobblin Job"
         B --> C[Extractor];
         C --> D[Converter];
         D --> E[Writer];
     end
-    E --> F[Sink (e.g., HDFS, Kafka)];
+    E --> F["Sink - e.g., HDFS, Kafka"];
 ```
 
+This illustrates the two main execution modes for Gobblin: standalone for single-node tasks and distributed on YARN for large-scale ingestion.
 ```{mermaid}
 graph LR
     A[Gobblin Standalone Agent] -- "Runs jobs from" --> B[Job Config Files];
