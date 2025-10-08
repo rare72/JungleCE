@@ -80,11 +80,11 @@ graph TD
     end
     subgraph "Spark Core Engine"
         E[Driver Program] --> F{SparkContext};
-        F -- Manages --> G[Cluster Manager (YARN)];
+        F -- Manages --> G[Cluster Manager YARN];
         G -- Acquires --> H[Executors on Worker Nodes];
     end
     A & B & C & D --> E
-    H -- Reads/Writes Data --> I[(HDFS)];
+    H -- Reads/Writes Data --> I[HDFS];
 ```
 
 ```{mermaid}
