@@ -1,120 +1,101 @@
-# Manual Hadoop Ecosystem Deployment Guide
+# Jungle Computing Effort: The Anvil
 
-This repository provides a comprehensive, step-by-step guide for manually deploying a multi-component big data stack from official binary packages. The guides are designed for bare-metal servers and do not rely on automated tools like Apache Bigtop or containerization like Docker. This approach offers maximum control and transparency into the setup of your data platform.
+**Forging stable, reproducible, and powerful Linux environments for Data Engineering.**
 
-The instructions support two major Linux distributions: **Debian 12** (`apt`) and **RHEL 9+** (`dnf`).
+## Mission
 
-## Ecosystem Architecture
+This project automates the transformation of a bare Linux system (Debian-based or RHEL-based) into a production-ready data engineering workstation. It provides a suite of modular, single-purpose scripts that handle everything from system updates and security hardening to the installation of essential development tools, data platforms, and GUI applications.
 
-The following diagram illustrates the final architecture of the deployed components and their relationships. HDFS serves as the foundational storage layer, with YARN managing cluster resources. Spark acts as the primary compute engine, while other specialized tools for analytics, data processing, and machine learning integrate with this core.
+The Anvil is built on the principles of idempotency and cross-platform compatibility, ensuring a consistent and reliable setup every time. An interactive master installer allows you to customize the setup by selecting or skipping specific tasks, giving you full control over your environment.
 
-```mermaid
-graph TD
-    subgraph "Core Infrastructure"
-        direction LR
-        HDFS["HDFS (Storage Layer)"]
-        YARN["YARN (Resource Manager)"]
-    end
+## Key Features
 
-    subgraph "Primary Compute Engine"
-        Spark["Apache Spark"]
-    end
+-   **Cross-Platform Support**: Works on both Debian-based (Ubuntu, Debian) and RHEL-based (RHEL, Fedora) distributions.
+-   **Interactive Installer**: A master script orchestrates the setup, allowing you to skip tasks you don't need.
+-   **Modular Scripts**: 34 single-purpose scripts handle specific tasks, making the system easy to understand, maintain, and extend.
+-   **Comprehensive Tooling**: Installs a full suite of tools for data engineering, including Python, Java, PostgreSQL, MongoDB, VS Code, and more.
+-   **Security Hardening**: Configures the system firewall and hardens the SSH server out of the box.
+-   **Service Management**: Includes a dedicated script to easily enable or disable PostgreSQL and MongoDB services post-setup.
 
-    subgraph "Analytics & Databases"
-        Druid["Apache Druid"]
-        CarbonData["Apache CarbonData"]
-        BookKeeper["Apache BookKeeper"]
-    end
+## Usage
 
-    subgraph "Data Processing & Abstraction"
-        Beam["Apache Beam"]
-        Calcite["Apache Calcite"]
-        DataFusion["Apache DataFusion"]
-    end
+### Running the Master Setup
 
-    subgraph "Libraries & Specialized Tools"
-        Libs["Libraries<br/>(DataFu, DataSketches)"]
-        Daffodil["Apache Daffodil"]
-        TVM["Apache TVM"]
-    end
-
-    %% Connections
-    Spark -- "Runs On" --> YARN
-    Spark -- "Reads/Writes" --> HDFS
-    Spark -- "Uses" --> Libs
-    Spark -- "Uses Storage Format" --> CarbonData
-
-    Beam -- "Executes Via Spark Runner On" --> Spark
-
-    Druid -- "Deep Storage" --> HDFS
-    Druid -- "Batch Ingestion Via" --> Spark
-    Druid -- "Depends On (Optional)" --> BookKeeper
-
-    TVM -- "Performs Inference On Data From" --> HDFS
-    Daffodil -- "Parses Data From" --> HDFS
-
-    Calcite -- "Provides SQL Layer For" --> Spark
-    DataFusion -- "Queries Data From" --> HDFS
-```
-
-## Shared Libraries (`setup_libs.sh`)
-
-This project includes a `setup_libs.sh` script to download common, shared libraries (JAR files) and place them in HDFS. This makes them easily accessible to compute engines like Spark and MapReduce without needing to bundle them with every single application.
-
-### Usage
-
-Run the script from the project root directory:
+To begin the setup process, clone this repository, navigate to the `orchestrator` directory, and run the master script with `sudo` privileges.
 
 ```bash
-./setup_libs.sh
+cd jungle-computing-effort/orchestrator
+sudo bash ./run_master_setup.sh
 ```
 
-The script will download the JARs to a temporary local directory, create a `/apps/jars` directory in HDFS, upload the JARs, and then clean up the local files.
+#### Skipping Tasks
 
-### Configuration Instructions
+You can customize your installation by skipping specific tasks using the `--skip` flag, followed by the numbers of the tasks you wish to exclude.
 
-After running the script, you need to configure your compute engines to automatically use these shared libraries.
-
-#### For Apache Spark (Automatic for all jobs)
-
-Edit your `spark-defaults.conf` file to automatically include these JARs for every application.
-
-1.  **Open the file**: `/opt/spark/conf/spark-defaults.conf`
-2.  **Add the `spark.jars` property**:
-    ```properties
-    # Auto-load shared libraries from HDFS for all jobs
-    spark.jars hdfs:///apps/jars/calcite-core-1.36.0.jar,hdfs:///apps/jars/datafu-spark-1.4.0.jar,hdfs:///apps/jars/datasketches-spark-4.2.0.jar,hdfs:///apps/jars/daffodil-runtime1_2.12-3.6.0.jar,hdfs:///apps/jars/arrow-datafusion-core-34.0.0.jar
-    ```
-3.  **Restart Spark**: Restart your Spark Master and Worker services for the changes to take effect.
-
-#### For Hadoop MapReduce
-
-You can make these libraries available to MapReduce jobs in two primary ways.
-
-**Method 1: Per-Job using `-libjars`**
-
-When submitting a MapReduce job, use the `-libjars` command-line option.
+For example, to skip the installation of GitHub Desktop (task 5) and Google Chrome (task 27):
 
 ```bash
-hadoop jar my-mapreduce-job.jar com.mycompany.MyJob \
--libjars hdfs:///apps/jars/calcite-core-1.36.0.jar,hdfs:///apps/jars/datafu-spark-1.4.0.jar \
-/input/path /output/path
+sudo bash ./run_master_setup.sh --skip 5 27
 ```
 
-**Method 2: Cluster-Wide via `mapred-site.xml`**
+### Managing Services
 
-To make the libraries available to all MapReduce jobs by default, add them to the `mapreduce.application.classpath`.
+After the initial setup, you can easily manage the PostgreSQL and MongoDB services using the `manage_postgres_mongo_services.sh` script located in the `scripts` directory.
 
-1.  **Open the file**: `/opt/hadoop/etc/hadoop/mapred-site.xml`
-2.  **Add/update the property**:
-    ```xml
-    <property>
-        <name>mapreduce.application.classpath</name>
-        <value>
-            $HADOOP_MAPRED_HOME/share/hadoop/mapreduce/*,
-            $HADOOP_MAPRED_HOME/share/hadoop/mapreduce/lib/*,
-            /apps/jars/*
-        </value>
-    </property>
-    ```
-3.  **Restart YARN**: Restart the YARN ResourceManager and NodeManagers for the changes to take effect.
+**Usage:**
+
+```bash
+cd jungle-computing-effort/scripts
+sudo ./manage_postgres_mongo_services.sh [enable|disable] [postgres|mongo]
+```
+
+**Examples:**
+
+```bash
+# Enable the PostgreSQL service
+sudo ./manage_postgres_mongo_services.sh enable postgres
+
+# Disable the MongoDB service
+sudo ./manage_postgres_mongo_services.sh disable mongo
+```
+
+## Script Manifest
+
+The project is composed of 34 distinct scripts organized into 9 categories.
+
+| #  | Category          | Script                               | Description                                                                 |
+|----|-------------------|--------------------------------------|-----------------------------------------------------------------------------|
+| 1  | System Prep       | `update_system.sh`                   | Updates all system packages to their latest versions.                       |
+| 2  | System Prep       | `configure_timezone.sh`              | Sets the system timezone to `America/New_York`.                             |
+| 3  | System Prep       | `setup_unattended_upgrades.sh`       | Configures automatic security updates (Debian-based).                       |
+| 4  | System Prep       | `install_build_tools.sh`             | Installs essential build tools (`build-essential` or `Development Tools`).  |
+| 5  | System Prep       | `install_github_tools.sh`            | Installs the GitHub CLI (`gh`) and GitHub Desktop.                          |
+| 6  | Security          | `configure_firewall.sh`              | Sets up a firewall, allowing SSH and denying other incoming traffic.        |
+| 7  | Security          | `harden_ssh_server.sh`               | Hardens SSH configuration by disallowing root and password login.           |
+| 8  | Shell & Terminal  | `install_zsh.sh`                     | Installs the Z shell.                                                       |
+| 9  | Shell & Terminal  | `install_oh_my_zsh.sh`               | Installs Oh My Zsh for the current user.                                    |
+| 10 | Shell & Terminal  | `set_zsh_as_default_shell.sh`        | Changes the user's default shell to Zsh.                                    |
+| 11 | Shell & Terminal  | `create_shell_profile.sh`            | Creates a `.zprofile` file and sets the default `$EDITOR`.                  |
+| 12 | Shell & Terminal  | `setup_shell_aliases.sh`             | Adds common and useful shell aliases to `~/.zshrc`.                         |
+| 13 | Shell & Terminal  | `install_terminator.sh`              | Installs the Terminator terminal emulator.                                  |
+| 14 | Core Dev Tools    | `install_java_jdk.sh`                | Installs OpenJDK 11.                                                        |
+| 15 | Core Dev Tools    | `install_python_dev_tools.sh`        | Installs Python development and linting tools (`black`, `flake8`, `isort`). |
+| 16 | Core Dev Tools    | `install_cli_power_tools.sh`         | Installs `jq`, `htop`, `tree`, and `ncdu`.                                  |
+| 17 | Core Dev Tools    | `install_vscode.sh`                  | Installs Visual Studio Code.                                                |
+| 18 | Core Dev Tools    | `install_python3.sh`                 | Installs Python 3 and Pip.                                                  |
+| 19 | Python Config     | `configure_pip.sh`                   | Creates a `pip.conf` file with a default request timeout.                   |
+| 20 | Python Config     | `install_pip_packages.sh`            | Installs core Python data libraries (`pandas`, `pyspark`, etc.).            |
+| 21 | Data Tools        | `install_postgresql_client.sh`       | Installs the `psql` command-line client.                                    |
+| 22 | Data Tools        | `install_postgresql_server.sh`       | Installs and enables the PostgreSQL database server.                        |
+| 23 | Data Tools        | `install_csvkit.sh`                  | Installs the `csvkit` command-line tool suite.                              |
+| 24 | Data Tools        | `install_mongodb.sh`                 | Installs the MongoDB Community Server.                                      |
+| 25 | Data Tools        | `install_quarto.sh`                  | Installs the Quarto technical publishing system.                            |
+| 26 | Data Tools        | `install_dbeaver_ce.sh`              | Installs DBeaver Community Edition.                                         |
+| 27 | Desktop & GUI     | `install_google_chrome.sh`           | Installs the Google Chrome web browser.                                     |
+| 28 | Desktop & GUI     | `create_chrome_shortcut.sh`          | Creates a desktop shortcut for Google Chrome.                               |
+| 29 | Desktop & GUI     | `create_terminator_shortcut.sh`      | Creates a desktop shortcut for Terminator.                                  |
+| 30 | Desktop & GUI     | `create_vscode_shortcut.sh`          | Creates a desktop shortcut for Visual Studio Code.                          |
+| 31 | Desktop & GUI     | `create_dbeaver_shortcut.sh`         | Creates a desktop shortcut for DBeaver.                                     |
+| 32 | Finalization      | `final_cleanup.sh`                   | Removes unnecessary packages and cleans the package cache.                  |
+| 33 | Management        | `prompt_for_reboot.sh`               | Informs the user that a reboot is recommended. (Manual Execution)           |
+| 34 | Management        | `manage_postgres_mongo_services.sh`  | A utility to enable/disable PostgreSQL and MongoDB. (Manual Execution)      |
